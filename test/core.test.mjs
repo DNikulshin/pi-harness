@@ -193,7 +193,8 @@ describe('extension: регистрация /cycle', () => {
     extension(pi);
 
     assert.ok(commands.has('cycle'), 'команда /cycle должна быть зарегистрирована');
-    assert.match(commands.get('cycle').description, /совместимост/u);
+    assert.match(commands.get('cycle').description, /Цикл ядра/u);
+    assert.match(commands.get('cycle').description, /шаг/u);
   });
 
   test('несовместимое ядро — ошибка в уведомлении и цикл не начинается', async () => {
@@ -213,8 +214,12 @@ describe('extension: регистрация /cycle', () => {
 
     const levels = notices.map(([level]) => level);
     assert.ok(levels.includes('error'), 'должно быть уведомление уровня error');
-    const error = notices.find(([level]) => level === 'error')?.[1] ?? '';
-    assert.match(error, /0\.9\.0/u);
-    assert.match(error, /\^0\.2\.0/u);
+    // Первым идёт статус (его тоже помечаем ошибкой), затем — причина отказа.
+    const errors = notices
+      .filter(([level]) => level === 'error')
+      .map(([, text]) => text)
+      .join('\n');
+    assert.match(errors, /0\.9\.0/u, 'в отказе должна быть установленная версия');
+    assert.match(errors, /\^0\.2\.0/u, 'в отказе должен быть требуемый диапазон');
   });
 });

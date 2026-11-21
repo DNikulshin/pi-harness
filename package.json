@@ -41,6 +41,14 @@
       "types": "./types/core.d.mts",
       "default": "./src/core.mjs"
     },
+    "./driver": {
+      "types": "./types/driver.d.mts",
+      "default": "./src/driver.mjs"
+    },
+    "./run": {
+      "types": "./types/run.d.mts",
+      "default": "./src/run.mjs"
+    },
     "./package.json": "./package.json"
   },
   "files": [
