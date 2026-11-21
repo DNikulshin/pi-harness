@@ -1,6 +1,6 @@
 {
   "name": "@dnikulshin/pi-harness",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Адаптер Pi для ядра @dnikulshin/harness: детерминированный цикл plan → code → gates → review → evaluate → decide одной командой",
   "keywords": [
     "pi-package",
@@ -79,5 +79,13 @@
     "@types/node": "26.6.6",
     "prettier": "3.10.1",
     "typescript": "7.0.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DNikulshin/pi-harness.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DNikulshin/pi-harness/issues"
+  },
+  "homepage": "https://github.com/DNikulshin/pi-harness#readme"
 }

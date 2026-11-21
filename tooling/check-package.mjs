@@ -12,8 +12,10 @@
  *
  * Использование:
  * ```
- * node tooling/check-package.mjs <архив.tgz> [--tag vX.Y.Z]
+ * node tooling/check-package.mjs <архив.tgz> [--tag vX.Y.Z] [--repository owner/repo]
  * ```
+ * `--repository` сверяет `repository.url` с репозиторием сборки: без него `npm publish
+ * --provenance` отвечает `E422` уже на публикации (так и вышло на теге `v0.1.1`).
  *
  * Коды выхода: `0` — архив годен; `1` — есть находки; `2` — ошибка использования или чтения архива.
  */
@@ -27,7 +29,7 @@ import { archiveProblems, parseVerboseListing } from './package-contract.mjs';
 /**
  * Разбор аргументов.
  * @param {string[]} argv аргументы без имени скрипта
- * @returns {{file: string, tag: string | null}} параметры
+ * @returns {{file: string, tag: string | null, repository: string | null}} параметры
  * @throws {Error} если аргументы не по формату
  */
 export function parseArgs(argv) {
@@ -35,6 +37,8 @@ export function parseArgs(argv) {
   let file = null;
   /** @type {string | null} */
   let tag = null;
+  /** @type {string | null} */
+  let repository = null;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -48,6 +52,16 @@ export function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--repository') {
+      const value = argv[index + 1];
+      if (typeof value !== 'string' || !/^[^/\s]+\/[^/\s]+$/u.test(value)) {
+        throw new Error('--repository: ожидается owner/repo');
+      }
+      repository = value;
+      index += 1;
+      continue;
+    }
+
     if (typeof arg === 'string' && arg.startsWith('-')) throw new Error(`неизвестный флаг: ${arg}`);
     if (file !== null) throw new Error(`лишний аргумент: ${arg}`);
     file = arg ?? null;
@@ -55,7 +69,7 @@ export function parseArgs(argv) {
 
   if (file === null) throw new Error('использование: check-package.mjs <архив.tgz> [--tag vX.Y.Z]');
 
-  return { file, tag };
+  return { file, tag, repository };
 }
 
 /**
@@ -88,25 +102,31 @@ export function readManifest(file) {
 
 /**
  * Проверить архив.
- * @param {{file: string, tag?: string | null}} params архив и тег
+ * @param {{file: string, tag?: string | null, repository?: string | null}} params архив, тег, репозиторий
  * @returns {string[]} находки
  */
-export function checkArchive({ file, tag = null }) {
+export function checkArchive({ file, tag = null, repository = null }) {
   const { entries, modes } = readArchive(file);
   const manifest = readManifest(file);
 
-  return archiveProblems({ entries, modes, manifest, tag });
+  return archiveProblems({ entries, modes, manifest, tag, repository });
 }
 
 // Запуск только при прямом исполнении: модуль импортируется тестом.
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    const { file, tag } = parseArgs(process.argv.slice(2));
+    const { file, tag, repository } = parseArgs(process.argv.slice(2));
     if (!existsSync(file)) throw new Error(`архив не найден: ${file}`);
 
-    const problems = checkArchive({ file, tag });
+    const problems = checkArchive({ file, tag, repository });
     if (problems.length === 0) {
-      console.log(`check-package: ${file} годен${tag === null ? '' : ` (тег ${tag})`}`);
+      const parts = [
+        tag === null ? null : `тег ${tag}`,
+        repository === null ? null : `репозиторий ${repository}`,
+      ].filter((part) => part !== null);
+      console.log(
+        `check-package: ${file} годен${parts.length === 0 ? '' : ` (${parts.join(', ')})`}`,
+      );
     } else {
       for (const problem of problems) console.error(`check-package: ${problem}`);
       console.error(`check-package: находок ${problems.length} — публикация остановлена`);

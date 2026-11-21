@@ -19,6 +19,7 @@ import { parseArgs, readArchive, checkArchive } from '../tooling/check-package.m
 import {
   REQUIRED_ENTRIES,
   archiveProblems,
+  normalizeRepository,
   parseVerboseListing,
   versionFromTag,
 } from '../tooling/package-contract.mjs';
@@ -169,6 +170,62 @@ describe('archiveProblems: обещания package.json', () => {
   });
 });
 
+describe('archiveProblems: repository.url против репозитория сборки', () => {
+  const manifest = {
+    ...MANIFEST,
+    repository: { type: 'git', url: 'git+https://github.com/DNikulshin/pi-harness.git' },
+  };
+
+  test('совпадает — тишина, хотя форма записи разная', () => {
+    assert.deepEqual(
+      archiveProblems({
+        entries: [...REQUIRED_ENTRIES],
+        modes: modesFor([...REQUIRED_ENTRIES]),
+        manifest,
+        repository: 'DNikulshin/pi-harness',
+      }),
+      [],
+    );
+  });
+
+  test('нет repository.url — находка: npm ответит E422 на --provenance', () => {
+    const found = archiveProblems({
+      entries: [...REQUIRED_ENTRIES],
+      modes: modesFor([...REQUIRED_ENTRIES]),
+      manifest: MANIFEST,
+      repository: 'DNikulshin/pi-harness',
+    });
+
+    assert.ok(found.some((problem) => problem.includes('нет repository.url')));
+  });
+
+  test('чужой репозиторий — находка с обоими адресами', () => {
+    const found = archiveProblems({
+      entries: [...REQUIRED_ENTRIES],
+      modes: modesFor([...REQUIRED_ENTRIES]),
+      manifest,
+      repository: 'someone/else',
+    });
+
+    assert.ok(
+      found.some((problem) => problem.includes('не совпадает с репозиторием сборки someone/else')),
+    );
+  });
+
+  test('normalizeRepository приводит формы к одному виду', () => {
+    const forms = [
+      'git+https://github.com/DNikulshin/pi-harness.git',
+      'https://github.com/DNikulshin/pi-harness',
+      'git@github.com:DNikulshin/pi-harness.git',
+      'https://github.com/dnikulshin/pi-harness/',
+    ];
+
+    for (const form of forms) {
+      assert.equal(normalizeRepository(form), 'https://github.com/dnikulshin/pi-harness', form);
+    }
+  });
+});
+
 describe('parseVerboseListing', () => {
   test('читает имя и режим из вывода tar -tvzf (GNU)', () => {
     const { entries, modes } = parseVerboseListing([
@@ -201,11 +258,24 @@ describe('versionFromTag', () => {
 });
 
 describe('parseArgs', () => {
-  test('архив обязателен, --tag отдельным флагом', () => {
-    assert.deepEqual(parseArgs(['a.tgz']), { file: 'a.tgz', tag: null });
-    assert.deepEqual(parseArgs(['a.tgz', '--tag', 'v0.1.0']), { file: 'a.tgz', tag: 'v0.1.0' });
+  test('архив обязателен, --tag и --repository отдельными флагами', () => {
+    assert.deepEqual(parseArgs(['a.tgz']), { file: 'a.tgz', tag: null, repository: null });
+    assert.deepEqual(parseArgs(['a.tgz', '--tag', 'v0.1.0']), {
+      file: 'a.tgz',
+      tag: 'v0.1.0',
+      repository: null,
+    });
+    assert.deepEqual(parseArgs(['a.tgz', '--repository', 'owner/repo']), {
+      file: 'a.tgz',
+      tag: null,
+      repository: 'owner/repo',
+    });
     assert.throws(() => parseArgs([]), /использование/u);
     assert.throws(() => parseArgs(['a.tgz', '--tag']), /--tag: ожидается vX\.Y\.Z/u);
+    assert.throws(
+      () => parseArgs(['a.tgz', '--repository']),
+      /--repository: ожидается owner\/repo/u,
+    );
     assert.throws(() => parseArgs(['a.tgz', 'b.tgz']), /лишний аргумент/u);
   });
 });

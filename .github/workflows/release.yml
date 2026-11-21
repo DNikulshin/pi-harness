@@ -72,7 +72,9 @@ jobs:
       # `--tag "$GITHUB_REF_NAME"`: версия в архиве обязана совпадать с тегом, иначе по тегу
       # ставится другой код. Никакой правки `package.json` на этом шаге нет — только отказ.
       - name: Состав архива и версия
-        run: node tooling/check-package.mjs dist/*.tgz --tag "$GITHUB_REF_NAME"
+        run:
+          node tooling/check-package.mjs dist/*.tgz --tag "$GITHUB_REF_NAME" --repository
+          "$GITHUB_REPOSITORY"
 
       # Путь с `./` обязателен: без него npm разбирает `dist/…tgz` как owner/repo и уходит в
       # `git ls-remote` вместо публикации файла.
