@@ -1,0 +1,43 @@
+name: CI
+
+# Проверки адаптера: тесты, строгий `tsc` по JS + JSDoc, форматирование и совместимость с ядром,
+# опубликованным в реестре. Последняя проверка принципиальна: адаптер живёт на контракте ядра, и
+# «зелено у автора» не значит «работает с тем, что реально ставят потребители».
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Тесты, типы и формат
+        run: npm run check
+
+      - name: Совместимость с опубликованным ядром
+        run: npx pi-harness-check
+
+      - name: Состав пакета
+        run: npm pack --dry-run
