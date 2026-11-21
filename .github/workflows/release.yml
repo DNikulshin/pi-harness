@@ -1,0 +1,78 @@
+name: Release
+
+# Публикация в npm по тегу `vX.Y.Z`.
+#
+# Публикуется **собранный архив**, а не репозиторий: между `npm pack` и `npm publish` стоит проверка
+# состава (`tooling/check-package.mjs`) — обязательные файлы, отсутствие тестов и CI, цели `bin`
+# (с битом исполнения) и `exports`, покрытие `files`, совпадение версии с тегом. Версию в npm
+# перезаписать нельзя: ошибка в составе достаётся потребителю первой.
+#
+# `--provenance` (аттестация сборки) требует `id-token: write`. Токен публикации — секрет
+# `NPM_TOKEN` (granular, scope `@dnikulshin`, Read and write (publish and stage), Bypass 2FA):
+# без режима stage registry отвечает `E_STAGE_REQUIRED`, без 2FA — `EOTP`.
+#
+# Порядок: PR поднимает версию в `package.json` и `CHANGELOG.md`, мерж в `main`, тег `vX.Y.Z` на
+# `main` после зелёного CI. Ruleset `release-tags` запрещает перезапись и удаление тегов `v*`.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@v7
+
+      # Пустой секрет неотличим от отсутствующего: GitHub подставляет пустую строку, а `secrets`
+      # в `if` не читается. Без этой проверки прогон проходит тесты и сборку, а падает на
+      # публикации с `ENEEDAUTH` — по тексту не видно, чего не хватает и что делать.
+      - name: Проверить, что NPM_TOKEN задан
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN}" ]; then
+            echo "::error::Секрет NPM_TOKEN не задан. gh secret set NPM_TOKEN — granular-токен, scope @dnikulshin, Read and write (publish and stage), Bypass 2FA"
+            exit 1
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Проверки
+        run: npm run check
+
+      # Сквозной прогон на ядре из реестра: релиз адаптера не должен выходить с непроверенным
+      # контрактом — установка шаблонов, настоящий `next` и `run` до первой остановки.
+      - name: Сквозной прогон на ядре из реестра
+        run: npm run test:e2e
+
+      - name: Собрать архив
+        run: npm pack --pack-destination dist
+
+      # `--tag "$GITHUB_REF_NAME"`: версия в архиве обязана совпадать с тегом, иначе по тегу
+      # ставится другой код. Никакой правки `package.json` на этом шаге нет — только отказ.
+      - name: Состав архива и версия
+        run: node tooling/check-package.mjs dist/*.tgz --tag "$GITHUB_REF_NAME"
+
+      # Путь с `./` обязателен: без него npm разбирает `dist/…tgz` как owner/repo и уходит в
+      # `git ls-remote` вместо публикации файла.
+      - name: Публикация в npm
+        run: npm publish ./dist/*.tgz --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
