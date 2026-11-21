@@ -39,5 +39,11 @@ jobs:
       - name: Совместимость с опубликованным ядром
         run: npx pi-harness-check
 
+      # Сквозной прогон на ядре **из реестра**, версия закреплена в devDependencies: установка
+      # шаблонов, настоящий `cycle-state init`, живой `next` и `run` до первой остановки.
+      # Ночью тот же тест идёт на `latest` (nightly-e2e.yml) — там красный значит дрейф ядра.
+      - name: Сквозной прогон на ядре из реестра
+        run: npm run test:e2e
+
       - name: Состав пакета
         run: npm pack --dry-run

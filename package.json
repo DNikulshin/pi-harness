@@ -65,7 +65,8 @@
     "typecheck:types": "tsc -p tsconfig.types.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "node --test && tsc --noEmit && prettier --check ."
+    "check": "node --test && tsc --noEmit && prettier --check .",
+    "test:e2e": "PI_HARNESS_E2E=1 node --test test/consumer.test.mjs"
   },
   "peerDependencies": {
     "@dnikulshin/harness": "^0.2.0",
