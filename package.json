@@ -1,6 +1,6 @@
 {
   "name": "@dnikulshin/pi-harness",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Адаптер Pi для ядра @dnikulshin/harness: детерминированный цикл plan → code → gates → review → evaluate → decide одной командой",
   "keywords": [
     "pi-package",

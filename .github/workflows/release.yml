@@ -62,8 +62,12 @@ jobs:
       - name: Сквозной прогон на ядре из реестра
         run: npm run test:e2e
 
+      # `--pack-destination` не создаёт каталог: без `mkdir` npm падает с ENOENT уже после всех
+      # проверок (так и вышло на теге v0.1.0).
       - name: Собрать архив
-        run: npm pack --pack-destination dist
+        run: |
+          mkdir -p dist
+          npm pack --pack-destination dist
 
       # `--tag "$GITHUB_REF_NAME"`: версия в архиве обязана совпадать с тегом, иначе по тегу
       # ставится другой код. Никакой правки `package.json` на этом шаге нет — только отказ.
