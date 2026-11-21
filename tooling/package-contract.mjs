@@ -103,9 +103,10 @@ export function versionFromTag(tag) {
  * @param {Record<string, string>} [params.modes] режимы доступа по имени
  * @param {Record<string, any>} params.manifest `package.json` архива
  * @param {string | null} [params.tag] тег релиза (`v0.1.0`)
+ * @param {string | null} [params.repository] репозиторий сборки (`owner/repo`) для сверки `repository.url`
  * @returns {string[]} находки: пусто — архив годен
  */
-export function archiveProblems({ entries, modes = {}, manifest, tag = null }) {
+export function archiveProblems({ entries, modes = {}, manifest, tag = null, repository = null }) {
   /** @type {string[]} */
   const problems = [];
   const files = new Set(entries);
@@ -148,6 +149,21 @@ export function archiveProblems({ entries, modes = {}, manifest, tag = null }) {
     problems.push(
       'package.json: нет peerDependencies["@dnikulshin/harness"] — совместимость не объявлена',
     );
+  }
+
+  if (repository !== null && repository !== '') {
+    const declared = manifest.repository?.url;
+    if (typeof declared !== 'string' || declared.trim() === '') {
+      problems.push(
+        'package.json: нет repository.url — npm publish --provenance отвечает E422 (сверить пакет с репозиторием нечем)',
+      );
+    } else if (
+      normalizeRepository(declared) !== normalizeRepository(`https://github.com/${repository}`)
+    ) {
+      problems.push(
+        `package.json: repository.url ${declared} не совпадает с репозиторием сборки ${repository} — provenance-проверка npm отвергнет архив`,
+      );
+    }
   }
 
   if (tag !== null && tag !== '') {
@@ -212,6 +228,24 @@ function filesField(manifest) {
   return Array.isArray(manifest.files)
     ? manifest.files.filter((entry) => typeof entry === 'string')
     : [];
+}
+
+/**
+ * Repository URL в каноническом виде для сравнения: без схемы `git+`, `.git`, слэша на конце и в
+ * нижнем регистре — npm сравнивает именно так (`git+https://github.com/o/r.git` ≡
+ * `https://github.com/o/r`).
+ * @param {string} url адрес репозитория
+ * @returns {string} каноническая форма
+ */
+export function normalizeRepository(url) {
+  return url
+    .trim()
+    .toLowerCase()
+    .replace(/^git\+/u, '')
+    .replace(/^ssh:\/\/git@/u, 'https://')
+    .replace(/^git@([^:]+):/u, 'https://$1/')
+    .replace(/\.git$/u, '')
+    .replace(/\/+$/u, '');
 }
 
 /**

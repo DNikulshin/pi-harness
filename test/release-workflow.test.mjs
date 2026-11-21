@@ -60,8 +60,10 @@ describe('release.yml: сборка архива', () => {
     assert.match(publish, /--access public/u);
   });
 
-  test('версия сверяется с тегом', () => {
-    assert.match(WORKFLOW, /--tag "\$GITHUB_REF_NAME"/u);
+  test('версия сверяется с тегом, репозиторий — с репозиторием сборки', () => {
+    // YAML складывает длинную строку `run:` в одну команду, поэтому между аргументами бывает
+    // перенос — сверяем по пробельным промежуткам, а не по одной строке.
+    assert.match(WORKFLOW, /--tag "\$GITHUB_REF_NAME"\s+--repository\s+"\$GITHUB_REPOSITORY"/u);
   });
 });
 
