@@ -1,0 +1,42 @@
+name: Nightly E2E
+
+# Ночной прогон на **последнем опубликованном** ядре (`latest`), пока CI на PR держит закреплённую
+# версию (`devDependencies`). Смысл разделения: красный PR всегда означает ошибку адаптера, а
+# красный ночной прогон — расхождение с новым ядром (например, контракт `cycle-driver.next/2`),
+# которое надо разобрать до релиза, а не после жалобы потребителя.
+on:
+  schedule:
+    # Утро по Москве: результат виден до начала работы.
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-e2e
+  cancel-in-progress: false
+
+jobs:
+  latest-core:
+    # Одна ОС: матрицу ubuntu+macos гоняет CI на PR, здесь важен сам факт дрейфа контракта.
+    runs-on: ubuntu-latest
+    env:
+      # Спецификация ядра переопределяет пин из `devDependencies`: проверяем то, что ставят сейчас.
+      PI_HARNESS_CORE_SPEC: '@dnikulshin/harness@latest'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Установка зависимостей
+        run: npm ci
+
+      - name: Версия ядра в реестре
+        run: npm view @dnikulshin/harness version
+
+      - name: Сквозной прогон на latest
+        run: npm run test:e2e

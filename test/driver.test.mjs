@@ -18,7 +18,7 @@ import {
   needsConfirmation,
   parseStepPlan,
 } from '../src/driver.mjs';
-import { cleanup, fakeProject, nextResponse } from './helpers/fake-project.mjs';
+import { cleanup, fakeProject, nextResponse } from '../test-support/fake-project.mjs';
 
 after(cleanup);
 

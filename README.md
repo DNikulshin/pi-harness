@@ -66,10 +66,16 @@ npx pi-harness-check          # 0 — совместимо, 1 — не уста�
 ## Разработка
 
 ```bash
-npm test              # node --test
+npm test              # node --test: 83 теста без сети
+npm run test:e2e      # сквозной прогон на ядре из реестра (~2 с, нужна сеть)
 npm run typecheck     # tsc --noEmit (JS + JSDoc, strict)
 npm run check         # тесты + типы + prettier
 ```
+
+`test:e2e` поднимает настоящий проект потребителя: `npm i -D @dnikulshin/harness` из реестра,
+`harness-init`, `cycle-state init` в git-репозитории с веткой `main`, затем живой `next` и `run` до
+первой остановки. Версия ядра закреплена в `devDependencies` — отдельного пина нет; ночной прогон
+(`nightly-e2e.yml`) берёт `latest` и падает первым, если контракт в ядре поехал.
 
 Внутренности ядра не импортируются — это проверяет `test/imports.test.mjs`. Границы и правила —
 [`AGENTS.md`](./AGENTS.md), история — [`CHANGELOG.md`](./CHANGELOG.md).

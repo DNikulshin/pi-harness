@@ -16,6 +16,6 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.mjs", "scripts/**/*.mjs", "test/**/*.mjs"],
+  "include": ["src/**/*.mjs", "scripts/**/*.mjs", "test/**/*.mjs", "test-support/**/*.mjs"],
   "exclude": ["node_modules"]
 }
