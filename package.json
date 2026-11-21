@@ -1,0 +1,73 @@
+{
+  "name": "@dnikulshin/pi-harness",
+  "version": "0.0.0",
+  "description": "Адаптер Pi для ядра @dnikulshin/harness: детерминированный цикл plan → code → gates → review → evaluate → decide одной командой",
+  "keywords": [
+    "pi-package",
+    "harness",
+    "cycle",
+    "code-review",
+    "agents"
+  ],
+  "license": "MIT",
+  "author": "Dmitriy Nikulshin",
+  "type": "module",
+  "private": false,
+  "engines": {
+    "node": ">=26.13 <27"
+  },
+  "os": [
+    "linux",
+    "darwin"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/extension.mjs"
+    ]
+  },
+  "bin": {
+    "pi-harness-check": "./scripts/check-core.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/extension.d.mts",
+      "default": "./src/extension.mjs"
+    },
+    "./compat": {
+      "types": "./types/compat.d.mts",
+      "default": "./src/compat.mjs"
+    },
+    "./core": {
+      "types": "./types/core.d.mts",
+      "default": "./src/core.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/",
+    "scripts/",
+    "types/",
+    "CHANGELOG.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit",
+    "typecheck:types": "tsc -p tsconfig.types.json",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "node --test && tsc --noEmit && prettier --check ."
+  },
+  "peerDependencies": {
+    "@dnikulshin/harness": "^0.2.0",
+    "@earendil-works/pi-coding-agent": ">=1.6.0"
+  },
+  "devDependencies": {
+    "@dnikulshin/harness": "0.2.0",
+    "@earendil-works/pi-coding-agent": "1.6.0",
+    "@types/node": "26.6.6",
+    "prettier": "3.10.1",
+    "typescript": "7.0.2"
+  }
+}

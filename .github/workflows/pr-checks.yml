@@ -1,0 +1,39 @@
+name: PR checks
+
+# Связь PR с issue: в теле должна быть строка `Closes #<номер>`.
+#
+# Зачем: GitHub связывает issue в момент мержа по ключевому слову в теле PR. Если тело собрано из
+# шаблона (`Closes #` без номера) или пересказано словами, issue остаётся открытым, а доска
+# показывает прежнюю колонку. Проверка делает это состояние невозможным: без ссылки обязательный
+# чек не пройдёт.
+#
+# HTML-комментарии и блоки кода не считаются ссылками: подсказка шаблона «Closes #<номер>»
+# иначе проходила бы проверку, ничего не закрывая.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  pr-references:
+    # PR от Dependabot не ссылаются на issue: задачи в трекере у бота нет, тело он не правит.
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ссылка на issue в теле PR
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          body="$(printf '%s' "$PR_BODY" | sed -E 's/<!--(.|\n)*?-->//g')"
+          if [ -z "$(printf '%s' "$body" | tr -d '[:space:]')" ]; then
+            echo "::error::Тело PR пустое. Добавьте раздел «Что сделано» и строку Closes #<номер>."
+            exit 1
+          fi
+          if ! printf '%s' "$body" | grep -Eqi '(closes|fixes|resolves)[[:space:]]+#[0-9]+'; then
+            echo "::error::В теле PR нет ссылки на issue. Добавьте строку вида Closes #12 — иначе issue не закроется при мерже."
+            exit 1
+          fi
+          echo "Ссылка на issue в теле PR есть."
