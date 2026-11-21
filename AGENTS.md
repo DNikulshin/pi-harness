@@ -37,6 +37,21 @@ CI (`.github/workflows/ci.yml`) гоняет `npm run check`, проверку �
 читает критерии из `### Готово, когда` тела issue, а в реальном цикле этот файл готовит супервизор
 (`gh issue view N --json title,body,labels`).
 
+## Релиз
+
+Версия в npm неизменяема, поэтому публикуется собранный архив, а не репозиторий:
+
+1. PR поднимает `version` в `package.json` и добавляет раздел в `CHANGELOG.md`.
+2. Мерж в `main` (squash) и тег `vX.Y.Z` на `main` после зелёного CI — тег публикует
+   (`release.yml`).
+3. Порядок внутри workflow: гейт «`NPM_TOKEN` задан» → `npm run check` → `npm run test:e2e` →
+   `npm pack` → `tooling/check-package.mjs ... --tag "$GITHUB_REF_NAME"` →
+   `npm publish ./dist/*.tgz --provenance --access public`.
+
+Состав архива проверяется до публикации (`tooling/package-contract.mjs`, тот же список проверяет
+`test/package-contract.test.mjs`). Цели `bin` проверяются с битом исполнения: без него `npx`
+отвечает 126/127 — это уже ловили в CI на скелете.
+
 ## Правила
 
 1. **Стиль — JS + JSDoc, строгий `tsc`.** Типы не «для галочки»: `checkJs` включён, `strict`,
