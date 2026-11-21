@@ -67,17 +67,18 @@ export function parseVerboseListing(lines) {
 
   for (const raw of lines) {
     const line = raw.trimEnd();
-    if (line === '') continue;
+    // Режим — первые 10 символов, дальше формат у tar разный: GNU печатает `owner/group size
+    // date time`, BSD (macos) — `nlink owner group size date time`. Поэтому путь ищется по
+    // маркеру `package/`, а не по номеру поля: иначе проверка проходит на linux и молча
+    // превращается в «нет обязательных файлов» на macos.
+    const mode = line.slice(0, 10);
+    if (!/^[-dl][rwxsStT-]{9}$/u.test(mode)) continue;
 
-    // `-rwxr-xr-x user/group 123 2026-11-21 21:00 package/src/extension.mjs`
-    const match = /^(\S{10})\s+\S+\s+\d+\s+\S+\s+\S+\s+(.+)$/u.exec(line);
-    if (match === null) continue;
+    const marker = line.indexOf('package/');
+    if (marker === -1) continue;
 
-    const [, mode, path] = match;
-    if (mode === undefined || path === undefined) continue;
-
-    const name = path.replace(/^package\//u, '');
-    if (name === '' || name === 'package') continue;
+    const name = line.slice(marker + 'package/'.length).replace(/\s+.*$/u, '');
+    if (name === '') continue;
 
     entries.push(name);
     modes[name] = mode;

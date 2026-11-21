@@ -170,7 +170,7 @@ describe('archiveProblems: обещания package.json', () => {
 });
 
 describe('parseVerboseListing', () => {
-  test('читает имя и режим из вывода tar -tvzf', () => {
+  test('читает имя и режим из вывода tar -tvzf (GNU)', () => {
     const { entries, modes } = parseVerboseListing([
       'drwxr-xr-x user/group 0 2026-11-21 21:00 package/',
       '-rwxr-xr-x user/group 1801 2026-11-21 21:00 package/scripts/check-core.mjs',
@@ -178,6 +178,17 @@ describe('parseVerboseListing', () => {
     ]);
 
     assert.deepEqual(entries, ['scripts/check-core.mjs', 'package.json']);
+    assert.equal(modes['scripts/check-core.mjs'], '-rwxr-xr-x');
+  });
+
+  test('формат BSD (macos) разбирается так же: поле nlink лишнее', () => {
+    const { entries, modes } = parseVerboseListing([
+      '-rw-r--r--  0 user  group     54 Nov 21 21:00 package/package.json',
+      '-rwxr-xr-x  0 user  group   1801 Nov 21 21:00 package/scripts/check-core.mjs',
+    ]);
+
+    assert.deepEqual(entries, ['package.json', 'scripts/check-core.mjs']);
+    assert.equal(modes['package.json'], '-rw-r--r--');
     assert.equal(modes['scripts/check-core.mjs'], '-rwxr-xr-x');
   });
 });
