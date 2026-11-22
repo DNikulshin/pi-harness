@@ -20,11 +20,18 @@
  * Запуск: `node tooling/pr-reference.mjs` (в CI тело приходит в `PR_BODY`),
  * вручную: `PR_BODY="$(gh pr view 17 --json body --jq .body)" node tooling/pr-reference.mjs`.
  *
- * Коды выхода: `0` — ссылка есть; `2` — ссылки нет или тело пустое (в CI печатается аннотация
- * `::error::`, чтобы причина была видна в интерфейсе PR, а не только в логе прогона).
+ * Второе свойство — **сообщения коммитов** (#22). GitHub закрывает issue и по closing-слову в
+ * сообщении коммита, причём разметка там не защищает: бэктики и блок кода ничего не экранируют.
+ * Пример с чужим номером в тексте коммита закрывает чужой issue при мерже — так и вышло здесь,
+ * где номер из примера совпал с открытым issue. Проверка ищет closing-слова в сообщениях без
+ * вырезания разметки и падает, если номер не закрывается телом PR.
+ *
+ * Коды выхода: `0` — ссылки на месте; `2` — ссылки нет, тело пустое или коммит тянет чужой issue
+ * (в CI печатается аннотация `::error::`, чтобы причина была видна в интерфейсе PR).
  *
  * Shebang нужен: скрипт запускается напрямую из workflow.
  */
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -80,6 +87,87 @@ export function closingIssues(body) {
 }
 
 /**
+ * Номера issue из closing-слов в тексте сообщения коммита — **без вырезания разметки**.
+ *
+ * Отдельная функция от `closingIssues`, потому что правила разные: в теле PR примеры в блоках кода
+ * и обратных кавычках ссылкой не считаются, а в сообщении коммита GitHub разметку не разбирает —
+ * бэктики бесполезны, и пример закрывает issue так же, как намеренная ссылка.
+ * @param {unknown} text текст сообщения коммита
+ * @returns {number[]} номера issue
+ */
+export function rawClosingIssues(text) {
+  if (typeof text !== 'string' || text === '') return [];
+  /** @type {number[]} */
+  const numbers = [];
+
+  for (const match of text.matchAll(REFERENCE)) {
+    const number = Number(match[1]);
+    if (!Number.isInteger(number) || number <= 0) continue;
+    if (!numbers.includes(number)) numbers.push(number);
+  }
+
+  return numbers;
+}
+
+/**
+ * Проблемы в сообщениях коммитов PR: closing-слово, которое GitHub применит, а тело PR — нет.
+ *
+ * Избыточность не ошибка: коммит вправе повторить номер из тела. Ошибка — номер, которого там нет:
+ * при мерже закроется чужой issue, и доска покажет «Done» работе, которую никто не делал.
+ * @param {{messages?: unknown, closing?: unknown}} [params] сообщения коммитов и номера из тела
+ * @returns {string[]} проблемы; пусто — расхождений нет
+ */
+export function commitReferenceProblems({ messages, closing } = {}) {
+  const list = Array.isArray(messages) ? messages : typeof messages === 'string' ? [messages] : [];
+  const allowed = new Set(
+    Array.isArray(closing) ? closing.filter((number) => Number.isInteger(number)) : [],
+  );
+  /** @type {string[]} */
+  const problems = [];
+
+  for (const message of list) {
+    if (typeof message !== 'string') continue;
+    const foreign = rawClosingIssues(message).filter((number) => !allowed.has(number));
+    if (foreign.length === 0) continue;
+
+    const subject = (message.split('\n')[0] ?? '').trim();
+    const numbers = foreign.map((number) => `#${number}`).join(', ');
+    problems.push(
+      `коммит «${subject}»: ${numbers} — GitHub закроет при мерже, а тело PR этого не делает`,
+    );
+  }
+
+  return problems;
+}
+
+/**
+ * Сообщения коммитов PR из git: `base..head` по SHA из окружения.
+ *
+ * Диапазон, а не вся история: коммиты базы ничего не закрывают. `--format=%B%x00` — тело целиком
+ * и NUL как разделитель, потому что сообщения многострочные.
+ * @param {NodeJS.ProcessEnv} env окружение CI (`PR_BASE_SHA`, `PR_HEAD_SHA`)
+ * @returns {string[]} сообщения; пусто, если SHA нет или git не ответил
+ */
+export function readCommitMessages(env) {
+  const base = env.PR_BASE_SHA;
+  const head = env.PR_HEAD_SHA;
+  if (typeof base !== 'string' || typeof head !== 'string' || base === '' || head === '') return [];
+
+  try {
+    const out = execFileSync('git', ['log', '--format=%B%x00', `${base}..${head}`], {
+      encoding: 'utf8',
+      maxBuffer: 16 * 1024 * 1024,
+    });
+    return out
+      .split('\0')
+      .map((message) => message.trim())
+      .filter((message) => message !== '');
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Причина отказа или `null`, если ссылка на месте. Текст объясняет, что именно нужно добавить:
  * «нет ссылки» без примера заставляет угадывать формат.
  * @param {unknown} body тело PR
@@ -130,6 +218,7 @@ function isDirectRun(moduleUrl) {
  * @param {{
  *   env?: NodeJS.ProcessEnv,
  *   readStdIn?: () => string,
+ *   readCommits?: (env: NodeJS.ProcessEnv) => string[],
  *   log?: (line: string) => void,
  *   stderr?: (line: string) => void,
  * }} [deps] зависимости, подставленные тестами
@@ -138,6 +227,7 @@ function isDirectRun(moduleUrl) {
 export function main({
   env = process.env,
   readStdIn,
+  readCommits = readCommitMessages,
   log = console.log,
   stderr = console.error,
 } = {}) {
@@ -145,16 +235,29 @@ export function main({
     // `PR_BODY` — основной путь (workflow); stdin — для ручных прогонов через пайп.
     const body = env.PR_BODY ?? (readStdIn === undefined ? '' : readStdIn());
     const reason = missingReferenceReason(body);
-    if (reason === null) {
-      const issues = closingIssues(body);
-      log(`pr-reference: PR закрывает issue ${issues.map((number) => `#${number}`).join(', ')}`);
-      return 0;
+    if (reason !== null) {
+      for (const line of reason.split('\n')) stderr(line);
+      // Аннотация Actions: причина видна в интерфейсе PR, а не только в логе прогона.
+      stderr(`::error::${reason.split('\n')[0] ?? ''}`);
+      return 2;
     }
 
-    for (const line of reason.split('\n')) stderr(line);
-    // Аннотация Actions: причина видна в интерфейсе PR, а не только в логе прогона.
-    stderr(`::error::${reason.split('\n')[0] ?? ''}`);
-    return 2;
+    const issues = closingIssues(body);
+    const problems = commitReferenceProblems({ messages: readCommits(env), closing: issues });
+    if (problems.length > 0) {
+      for (const problem of problems) stderr(problem);
+      stderr(
+        '::error::В сообщении коммита есть закрывающее слово с номером, которого тело PR не закрывает: ' +
+          'при мерже GitHub закроет чужой issue. Уберите пример из текста коммита.',
+      );
+      return 2;
+    }
+
+    log(
+      `pr-reference: PR закрывает issue ${issues.map((number) => `#${number}`).join(', ')}; ` +
+        'в сообщениях коммитов чужих номеров нет',
+    );
+    return 0;
   } catch (error) {
     stderr(`pr-reference: ${firstLine(error)}`);
     return 2;
