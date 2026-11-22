@@ -251,27 +251,46 @@ async function showNext({ root, notify }) {
  */
 async function cycleDirFor({ root, notify }) {
   const result = await callDriver({ root, args: ['next'] });
+  let reason = result.stderr;
   try {
-    const dir = resolveCycleDir({ root, dir: parseStepPlan(result.json).cycleDir });
+    const plan = parseStepPlan(result.json);
+    const dir = resolveCycleDir({ root, dir: plan.cycleDir });
     if (dir !== null) return dir;
-  } catch {
-    // Ниже — резервный путь: текст отказа драйвера уже не нужен целиком, но причину покажем.
+    reason = reason === '' ? `драйвер не назвал каталог цикла (код ${result.code})` : reason;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    reason = reason === '' ? message : reason;
   }
 
   const fallback = findCycleDir(root);
   if (fallback.dir === null) {
-    if (result.stderr !== '') notify(result.stderr, 'warning');
+    if (reason !== '') notify(reason, 'warning');
     notify(fallback.error ?? 'каталог цикла не найден', 'error');
     return null;
   }
 
   notify(
-    `Драйвер не ответил, показываю артефакты напрямую из \`.pi/artifacts/\`: стадии меняет CLI ядра, ` +
-      'а не адаптер, поэтому чтение такого каталога безопасно.',
+    `Драйвер не назвал каталог цикла (${firstLine(reason)}): показываю артефакты напрямую из ` +
+      '`.pi/artifacts/`. Стадии меняет CLI ядра, а не адаптер, поэтому такое чтение безопасно.',
     'warning',
   );
 
   return fallback.dir;
+}
+
+/**
+ * Причина отказа драйвера в одну строку: у `cycle-driver` сообщения бывают многострочными.
+ * @param {string} reason текст отказа
+ * @returns {string} одна строка с причиной
+ */
+function firstLine(reason) {
+  const flat = reason
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+  const [first] = flat;
+
+  return first === undefined ? 'причина не названа' : first;
 }
 
 /**

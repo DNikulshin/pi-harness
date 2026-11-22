@@ -48,6 +48,12 @@ export const MAX_EVIDENCE_LINES = 200;
 /** Сколько файлов `evidence/` перечисляем: пакет растёт от итерации к итерации. */
 export const MAX_EVIDENCE_ENTRIES = 200;
 
+/** Сколько элементов списка решения печатаем: причины и `unverified` бывают длинными. */
+export const MAX_LIST_ITEMS = 5;
+
+/** Потолок одного элемента списка: элемент решения — абзац, а не строка таблицы. */
+export const MAX_LIST_ITEM_CHARS = 300;
+
 /**
  * Разобранный артефакт: значение либо текст ошибки (никогда оба сразу).
  * @typedef {object} Artifact
@@ -254,10 +260,13 @@ export function describeState(value) {
   }
 
   const escalation = asRecord(state.escalation);
+  const terminal = stage === 'DONE' || stage === 'ESCALATED';
   if (escalation !== null) {
     const reason = asString(escalation.reason) ?? '?';
     const detail = asString(escalation.detail) ?? 'без деталей';
     lines.push(`Ждём: решения владельца — эскалация ${reason}: ${detail}`);
+  } else if (terminal) {
+    lines.push(`Ждём: ничего — цикл завершён (${stage}), артефакты остаются для разбора`);
   } else if (open !== undefined) {
     lines.push(
       `Ждём: завершения ${asString(open.stage) ?? '?'} — этап открыт с ` +
@@ -369,19 +378,19 @@ export function describeDecision(value) {
   ];
 
   const reasons = strings(decision.reasons);
-  if (reasons.length > 0) lines.push(`Причины: ${reasons.join(', ')}`);
+  pushList(lines, 'Причины', reasons);
 
   const acquire = strings(decision.acquire);
-  if (acquire.length > 0) lines.push(`Добор свидетельств: ${acquire.join(', ')}`);
+  pushList(lines, 'Добор свидетельств', acquire);
 
   const rework = strings(decision.rework_items);
-  if (rework.length > 0) lines.push(`На доработку: ${rework.join(', ')}`);
+  pushList(lines, 'На доработку', rework);
 
   const downgraded = strings(decision.downgraded);
-  if (downgraded.length > 0) lines.push(`Понижено: ${downgraded.join(', ')}`);
+  pushList(lines, 'Понижено', downgraded);
 
   const unverified = strings(decision.unverified);
-  if (unverified.length > 0) lines.push(`Не подтверждено: ${unverified.join(', ')}`);
+  pushList(lines, 'Не подтверждено', unverified);
 
   const unresolved = asNumber(asRecord(decision.counts)?.['unresolved_refs']);
   if (unresolved !== null) lines.push(`Неразрешённых ссылок: ${unresolved}`);
@@ -598,6 +607,28 @@ function shortSha(value) {
   const sha = typeof value === 'string' ? value.trim() : '';
 
   return /^[0-9a-f]{7,}/u.test(sha) ? sha.slice(0, 7) : null;
+}
+
+/**
+ * Список в артефакте — построчно и с потолком: элементы решения бывают абзацами, а строк
+ * в досье бывает десяток — в TUI это читают только построчно.
+ * @param {string[]} lines куда писать
+ * @param {string} title заголовок списка
+ * @param {string[]} items элементы
+ * @returns {void}
+ */
+function pushList(lines, title, items) {
+  if (items.length === 0) return;
+
+  lines.push(`${title} (${items.length}):`);
+  for (const item of items.slice(0, MAX_LIST_ITEMS)) {
+    const text =
+      item.length > MAX_LIST_ITEM_CHARS ? `${item.slice(0, MAX_LIST_ITEM_CHARS)}…` : item;
+    lines.push(`  · ${text}`);
+  }
+  if (items.length > MAX_LIST_ITEMS) {
+    lines.push(`  · …и ещё ${items.length - MAX_LIST_ITEMS}`);
+  }
 }
 
 /**
