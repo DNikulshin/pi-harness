@@ -18,6 +18,13 @@ export declare function helpText(): string;
  */
 export declare function parseSubcommand(args: string): string;
 /**
+ * Аргументы подкоманды: всё после первого слова. `evidence` берёт путь целиком, поэтому
+ * пробелы в нём сохраняются.
+ * @param {string} args аргументы команды
+ * @returns {string[]} остаток аргументов
+ */
+export declare function parseRest(args: string): string[];
+/**
  * Фабрика расширения Pi. Экспорт по умолчанию — то, что загружает Pi.
  * @param {import('@earendil-works/pi-coding-agent').ExtensionAPI} pi API расширения
  */

@@ -118,6 +118,7 @@ function parseJson(text) {
  * @property {string} reason причина решения
  * @property {string | null} waitingFor чего ждёт цикл
  * @property {string[]} commands готовые команды
+ * @property {string | null} cycleDir каталог цикла из `cycle.dir` — по нему читаются артефакты
  * @property {object | null} cycle блок `cycle` (итерация, ветка, подтверждение, эскалация)
  * @property {object | null} done блок `done` (история и счётчики журнала)
  */
@@ -163,6 +164,7 @@ export function parseStepPlan(json) {
     commands: Array.isArray(plan.commands)
       ? plan.commands.filter((c) => typeof c === 'string')
       : [],
+    cycleDir: cycleDirOf(plan.cycle),
     cycle:
       plan.cycle !== null && typeof plan.cycle === 'object'
         ? /** @type {object} */ (plan.cycle)
@@ -172,6 +174,20 @@ export function parseStepPlan(json) {
         ? /** @type {object} */ (plan.done)
         : null,
   };
+}
+
+/**
+ * Каталог цикла из блока `cycle` (§5.3a ядра): адаптер читает по нему артефакты, а не ищет
+ * каталоги сам — правила активности каталогов живут в ядре.
+ * @param {unknown} cycle блок `cycle` ответа драйвера
+ * @returns {string | null} путь из `cycle.dir` или `null`, если поля нет
+ */
+function cycleDirOf(cycle) {
+  if (cycle === null || typeof cycle !== 'object') return null;
+
+  const dir = /** @type {Record<string, unknown>} */ (cycle).dir;
+
+  return typeof dir === 'string' && dir !== '' ? dir : null;
 }
 
 /**

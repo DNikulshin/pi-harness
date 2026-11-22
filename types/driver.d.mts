@@ -89,6 +89,10 @@ export type StepPlan = {
      */
     commands: string[];
     /**
+     * каталог цикла из `cycle.dir` — по нему читаются артефакты
+     */
+    cycleDir: string | null;
+    /**
      * блок `cycle` (итерация, ветка, подтверждение, эскалация)
      */
     cycle: object | null;
@@ -109,6 +113,7 @@ export type StepPlan = {
  * @property {string} reason причина решения
  * @property {string | null} waitingFor чего ждёт цикл
  * @property {string[]} commands готовые команды
+ * @property {string | null} cycleDir каталог цикла из `cycle.dir` — по нему читаются артефакты
  * @property {object | null} cycle блок `cycle` (итерация, ветка, подтверждение, эскалация)
  * @property {object | null} done блок `done` (история и счётчики журнала)
  */
