@@ -265,6 +265,13 @@ describe('describeState: состояние цикла по-человеческ
     assert.match(describeState(null), /ожидался объект состояния/u);
     assert.match(describeState([1, 2]), /ожидался объект состояния/u);
   });
+
+  test('терминальный цикл: «завершён», а не «ждём завершения DONE»', () => {
+    const text = describeState({ ...STATE, stage: 'DONE', stage_status: 'running' });
+
+    assert.match(text, /Ждём: ничего — цикл завершён \(DONE\)/u);
+    assert.ok(!text.includes('Ждём: завершения DONE'), 'завершённый цикл никого не ждёт');
+  });
 });
 
 describe('describeGates: что прошло, что нет и первые строки', () => {
@@ -390,11 +397,22 @@ describe('describeDecision: решение и его причина', () => {
     });
 
     assert.match(text, /Решение итерации 2: REWORK → повтор CODE/u);
-    assert.match(text, /Причины: gate:test, review:BLOCKER-1/u);
-    assert.match(text, /На доработку: починить падающий тест/u);
-    assert.match(text, /Понижено: MAJOR-2 -> FOLLOW-UP/u);
-    assert.match(text, /Не подтверждено: qa:web/u);
+    assert.match(text, /Причины \(2\):\n {2}· gate:test\n {2}· review:BLOCKER-1/u);
+    assert.match(text, /На доработку \(1\):\n {2}· починить падающий тест/u);
+    assert.match(text, /Понижено \(1\):\n {2}· MAJOR-2 -> FOLLOW-UP/u);
+    assert.match(text, /Не подтверждено \(1\):\n {2}· qa:web/u);
     assert.match(text, /Неразрешённых ссылок: 0/u);
+  });
+
+  test('длинные списки режутся: абзацы решения не уезжают целиком', () => {
+    const items = Array.from({ length: 9 }, (_, index) => `пункт ${index + 1} ${'х'.repeat(400)}`);
+    const text = describeDecision({ action: 'REWORK', unverified: items });
+
+    assert.match(text, /Не подтверждено \(9\):/u);
+    assert.match(text, /…и ещё 4/u);
+    for (const line of text.split('\n').filter((row) => row.includes('· пункт'))) {
+      assert.ok(line.length <= 320, `элемент списка обрезан, получено ${line.length}`);
+    }
   });
 
   test('без action — понятный отказ: решение не записано', () => {
@@ -405,7 +423,9 @@ describe('describeDecision: решение и его причина', () => {
   test('не-строки в массивах не превращаются в текст', () => {
     const text = describeDecision({ action: 'PROCEED', reasons: [1, null, 'gate:test'] });
 
-    assert.match(text, /Причины: gate:test/u);
+    assert.match(text, /Причины \(1\):/u);
+    assert.match(text, /· gate:test/u);
+    assert.ok(!text.includes('null'), 'не-строки в список не попадают');
   });
 });
 
@@ -686,7 +706,7 @@ describe('подкоманды /cycle: показ артефактов', () => {
     const text = (await runCommand(root, 'decision 1')).join('\n');
 
     assert.match(text, /Решение итерации 1: PROCEED/u);
-    assert.match(text, /Причины: gates:green/u);
+    assert.match(text, /Причины \(1\):\n {2}· gates:green/u);
   });
 
   test('evidence: список и содержимое по запросу', async () => {
@@ -722,6 +742,7 @@ describe('подкоманды /cycle: показ артефактов', () => {
 
     const text = (await runCommand(root, 'state')).join('\n');
     assert.match(text, /показываю артефакты напрямую/u);
+    assert.match(text, /state\.json не читается|драйвер вернул не JSON/u);
     assert.match(text, /Стадия REWORK/u);
   });
 
