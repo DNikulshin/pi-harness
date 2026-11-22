@@ -1,5 +1,10 @@
 # @dnikulshin/pi-harness
 
+[![CI](https://github.com/DNikulshin/pi-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/DNikulshin/pi-harness/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@dnikulshin/pi-harness)](https://www.npmjs.com/package/@dnikulshin/pi-harness)
+[![Node](https://img.shields.io/badge/node-%3E%3D26.13%20%3C27-informational)](./.nvmrc)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+
 Адаптер [Pi](https://pi.dev) для ядра
 [`@dnikulshin/harness`](https://github.com/DNikulshin/dev-harness): цикл
 `plan → code → gates → review → evaluate → decide` одной командой, без ручных вызовов скриптов ядра.
@@ -90,8 +95,20 @@ npm run check         # тесты + типы + prettier
 первой остановки. Версия ядра закреплена в `devDependencies` — отдельного пина нет; ночной прогон
 (`nightly-e2e.yml`) берёт `latest` и падает первым, если контракт в ядре поехал.
 
-Внутренности ядра не импортируются — это проверяет `test/imports.test.mjs`. Границы и правила —
-[`AGENTS.md`](./AGENTS.md), история — [`CHANGELOG.md`](./CHANGELOG.md).
+Внутренности ядра не импортируются — это проверяет `test/imports.test.mjs`.
+
+## Документация и участие
+
+- [`AGENTS.md`](./AGENTS.md) — границы адаптера: что потребляем, что не имеем права делать.
+- [`CHANGELOG.md`](./CHANGELOG.md) — история версий (`0.1.x`, `0.2.x`) и что считается ломающим.
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — issue → ветка → PR, проверки, границы правки.
+- [`SECURITY.md`](./SECURITY.md) — приватное сообщение об уязвимости и что уязвимостью не считается.
+- [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) — кодекс поведения участников.
+- [Вики](https://github.com/DNikulshin/pi-harness/wiki) — вход для нового пользователя: `/cycle` по
+  шагам, разбор отказов, FAQ по совместимости версий.
+- Контракт ядра, который потребляется:
+  [README ядра](https://github.com/DNikulshin/dev-harness#readme) и Приложение A
+  `docs/orchestrator-core.md`.
 
 ## Лицензия
 

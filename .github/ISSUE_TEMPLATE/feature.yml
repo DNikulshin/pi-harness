@@ -1,0 +1,39 @@
+name: Задача / фича
+description: Новая команда, поведение или изменение контракта адаптера
+labels: ['type:feature', 'status:todo']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Задача должна закрываться одним PR (или быть явно разбита на подзадачи). Границы адаптера —
+        `AGENTS.md`: правка протокола цикла делается в ядре, здесь — потребление контракта.
+  - type: textarea
+    id: why
+    attributes:
+      label: Зачем
+      description: Какую проблему решаем и для кого. Одно-два предложения.
+      placeholder: Владельцу нужен показ артефактов, не выходя из сессии Pi.
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Что делаем
+      description: Нумерованные шаги или список изменений. Что именно станет проверяемым.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Готово, когда
+      description: Критерии приёмки — проверяемые утверждения, а не «работает».
+      placeholder: |
+        - `/cycle gates 2` показывает статус, код возврата и первые строки лога;
+        - битый `gates.2.json` даёт текст ошибки, а не исключение.
+    validations:
+      required: true
+  - type: textarea
+    id: out
+    attributes:
+      label: Не входит
+      description: Что намеренно оставляем за рамками — чтобы PR не разросся.
