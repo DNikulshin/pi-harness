@@ -1,6 +1,6 @@
 {
   "name": "@dnikulshin/pi-harness",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Адаптер Pi для ядра @dnikulshin/harness: детерминированный цикл plan → code → gates → review → evaluate → decide одной командой",
   "keywords": [
     "pi-package",
@@ -48,6 +48,10 @@
     "./run": {
       "types": "./types/run.d.mts",
       "default": "./src/run.mjs"
+    },
+    "./artifacts": {
+      "types": "./types/artifacts.d.mts",
+      "default": "./src/artifacts.mjs"
     },
     "./package.json": "./package.json"
   },
