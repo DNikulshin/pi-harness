@@ -25,7 +25,11 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
+      # История нужна целиком: проверка читает сообщения коммитов PR (`base..head`), а не только
+      # тело — GitHub закрывает issue и по closing-слову в коммите (#22).
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -33,8 +37,11 @@ jobs:
 
       # Логика — tooling/pr-reference.mjs (чистые функции, покрыты node --test): HTML-комментарии,
       # блоки кода и inline-code не считаются ссылками, иначе подсказка шаблона «Closes #<номер>»
-      # и пример в кавычках проходили бы проверку, ничего не закрывая.
+      # и пример в кавычках проходили бы проверку, ничего не закрывая. Плюс сообщения коммитов:
+      # closing-слово с номером вне тела PR закрыло бы чужой issue при мерже (#22).
       - name: Ссылка на issue в теле PR
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node tooling/pr-reference.mjs
