@@ -1,0 +1,38 @@
+name: Wiki
+
+# Публикация вики из репозитория: страницы лежат в `.github/wiki/`, правка проходит ревью в PR и
+# уезжает в вики этим workflow. Второго источника правды нет.
+#
+# Токен — `GITHUB_TOKEN` с `contents: write`: вики-репозиторий принадлежит тому же репозиторию, поэтому
+# отдельный секрет не нужен. Если вики выключена (Settings → Features → Wikis), push откажет — это
+# видно по красному прогону, а не по расхождению текстов.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/wiki/**'
+      - 'tooling/wiki-sync.mjs'
+      - '.github/workflows/wiki.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wiki-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Опубликовать страницы вики
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node tooling/wiki-sync.mjs
