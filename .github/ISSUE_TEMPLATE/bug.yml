@@ -1,0 +1,55 @@
+name: Баг
+description: Адаптер или команда /cycle работают не так, как описано
+labels: ['type:bug', 'status:todo']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Прежде чем писать: если отказ пришёл от ядра (чужие поля контракта, несовместимая версия),
+        это дефект контракта — issue в
+        [DNikulshin/dev-harness](https://github.com/DNikulshin/dev-harness/issues).
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      description: Команда целиком (`/cycle …` или `pi-harness-check`) и что было до неё.
+      placeholder: |
+        1. `pi install npm:@dnikulshin/pi-harness`
+        2. В проекте с ядром 0.2.1: `/cycle gates`
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемый результат
+      description:
+        Что должно было произойти и чем это описано — `README.md`, `AGENTS.md`, контракт ядра §5.3a.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактический результат
+      description: |
+        Текст отказа целиком (код возврата и сообщение). Содержимое `.env*` и тела артефактов
+        не вставлять: диагностика адаптера их не печатает, копия в issue — утечка.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Версии
+      placeholder: адаптер 0.2.1 · ядро 0.2.0 · Pi 1.6.0 · Node 26.13.1 · linux
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Серьёзность
+      options:
+        - 'p1 — блокер (установка или /cycle не работают, цикл не начинается)'
+        - 'p2 — заметно мешает'
+        - 'p3 — косметика'
+    validations:
+      required: true

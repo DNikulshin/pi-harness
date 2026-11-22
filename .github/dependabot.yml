@@ -1,0 +1,46 @@
+# Обновления зависимостей: Dependabot.
+#
+# Зачем: адаптер держит два пина — ядро (@dnikulshin/harness) и рантайм Pi. Дрейф первого ловится
+# nightly-e2e, но плановое обновление всё равно нужно: устаревшая dev-зависимость и actions в
+# workflow расходятся по CI незаметно. Каждый PR проходит тот же `npm run check` и, при изменении
+# кода, `test:e2e`.
+version: 2
+updates:
+  # Зависимости репозитория: ядро, Pi, typescript, prettier, @types/node.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      # Компилятор и типы обновляются вместе: рассинхрон даёт ложные ошибки tsc.
+      typescript:
+        patterns:
+          - typescript
+          - '@types/*'
+      # Контракт и рантайм — по отдельности: у каждого свой источник дрейфа и свой сигнал в CI.
+      harness:
+        patterns:
+          - '@dnikulshin/harness'
+      pi-runtime:
+        patterns:
+          - '@earendil-works/pi-coding-agent'
+
+  # Actions в workflows: обновление тега меняет код, который выполняется с доступом к секретам.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Moscow
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: chore
+      include: scope

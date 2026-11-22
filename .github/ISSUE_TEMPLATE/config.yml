@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Правила репозитория и границы адаптера
+    url: https://github.com/DNikulshin/pi-harness/blob/main/AGENTS.md
+    about: Что адаптер может, а что делается в ядре; как ведутся ветки и коммиты.
+  - name: Политика безопасности
+    url: https://github.com/DNikulshin/pi-harness/blob/main/SECURITY.md
+    about: Уязвимости — приватно через GitHub Security Advisories, не через issue.
+  - name: Контракт ядра и протокол цикла
+    url: https://github.com/DNikulshin/dev-harness#readme
+    about: Что именно потребляет адаптер и откуда берутся артефакты.
